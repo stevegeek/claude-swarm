@@ -454,6 +454,12 @@ claude-swarm --session-id ~/path/to/session
 claude-swarm list-sessions
 claude-swarm list-sessions --limit 20
 
+# Tail session logs in real-time
+claude-swarm tail                        # Follow logs of the most recent session
+claude-swarm tail 20241206_143022        # Follow logs of a specific session
+claude-swarm tail --lines 50             # Show last 50 lines initially
+
+
 # Show version
 claude-swarm version
 
@@ -476,7 +482,8 @@ All session files are organized in `~/.claude-swarm/sessions/{project}/{timestam
 - `{instance_name}.mcp.json`: MCP configuration files
 - `session.log`: Human-readable request/response tracking
 - `session.log.json`: All events in JSONL format (one JSON per line)
-# Note: permissions.log is no longer generated as the permission MCP server has been deprecated
+
+*Note: permissions.log is no longer generated as the permission MCP server has been deprecated*
 
 #### Listing Sessions
 View your previous Claude Swarm sessions:
