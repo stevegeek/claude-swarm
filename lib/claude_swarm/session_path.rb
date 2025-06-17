@@ -71,8 +71,8 @@ module ClaudeSwarm
         # Directly find all session directories with config files
         # Pattern matches: sessions_dir/project_dir/timestamp_dir/config.yml
         session_paths = Dir.glob(File.join(sessions_dir, "*", "*", "config.yml"))
-                          .map { |config_file| File.dirname(config_file) }
-                          .uniq
+                           .map { |config_file| File.dirname(config_file) }
+                           .uniq
 
         return nil if session_paths.empty?
 
