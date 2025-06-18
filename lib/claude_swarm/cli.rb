@@ -245,20 +245,15 @@ module ClaudeSwarm
       say "Cleaned #{cleaned} stale session#{cleaned == 1 ? "" : "s"}", :green
     end
 
-    desc "watch SESSION_ID", "Watch session logs"
+    desc "watch [SESSION_ID]", "Watch session logs (defaults to most recent session)"
     method_option :lines, aliases: "-n", type: :numeric, default: 100,
                           desc: "Number of lines to show initially"
-    def watch(session_id)
-      # Find session path
-      run_symlink = File.join(File.expand_path("~/.claude-swarm/run"), session_id)
-      session_path = if File.symlink?(run_symlink)
-                       File.readlink(run_symlink)
-                     else
-                       # Search in sessions directory
-                       Dir.glob(File.expand_path("~/.claude-swarm/sessions/*/*")).find do |path|
-                         File.basename(path) == session_id
-                       end
-                     end
+    def watch(session_id = nil)
+      session_path = if session_path
+        SessionPath.find_by_id(session_id)
+      else
+        SessionPath.find_most_recent
+      end
 
       unless session_path && Dir.exist?(session_path)
         error "Session not found: #{session_id}"
@@ -345,40 +340,6 @@ module ClaudeSwarm
 
       say "\nTo resume a session, run:", :bold
       say "  claude-swarm --session-id <session-id>", :cyan
-    end
-
-    desc "tail [SESSION_ID]", "Tail session logs in real-time (defaults to most recent session)"
-    method_option :lines, aliases: "-n", type: :numeric, default: 10,
-                          desc: "Number of lines to show initially"
-    def tail(session_id = nil)
-      session_path = nil
-
-      if session_id
-        # Find the specific session
-        session_path = SessionPath.find_by_id(session_id)
-        unless session_path
-          error "Session not found: #{session_id}"
-          exit 1
-        end
-      else
-        # Find the most recent session
-        session_path = SessionPath.find_most_recent
-        unless session_path
-          error "No sessions found"
-          exit 1
-        end
-      end
-
-      # Look for the session.log file
-      log_file = File.join(session_path, "session.log")
-      unless File.exist?(log_file)
-        error "Log file not found for session"
-        exit 1
-      end
-
-      say "Tailing log file: #{log_file}", :green
-      # Execute the tail command
-      exec("tail", "-f", "-n", options[:lines].to_s, log_file)
     end
 
     default_task :start
