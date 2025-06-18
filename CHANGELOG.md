@@ -1,3 +1,21 @@
+## [0.1.17]
+
+### Added
+- **Multi-directory support**: Instances can now access multiple directories
+  - The `directory` field in YAML configuration now accepts either a string (single directory) or an array of strings (multiple directories)
+  - Additional directories are passed to Claude using the `--add-dir` flag
+  - The first directory in the array serves as the primary working directory
+  - All specified directories must exist or validation will fail
+  - Example: `directory: [./frontend, ./backend, ./shared]`
+- **Session monitoring commands**: New commands for monitoring and managing active Claude Swarm sessions
+  - `claude-swarm ps`: List all active sessions with properly aligned columns showing session ID, swarm name, total cost, uptime, and directories
+  - `claude-swarm show SESSION_ID`: Display detailed session information including instance hierarchy and individual costs
+  - `claude-swarm watch SESSION_ID`: Tail session logs in real-time (uses native `tail -f`)
+  - `claude-swarm clean`: Remove stale session symlinks with optional age filtering (`--days N`)
+  - Active sessions are tracked via symlinks in `~/.claude-swarm/run/` for efficient monitoring
+  - Cost tracking aggregates data from `session.log.json` for accurate reporting
+  - Interactive main instance shows "n/a (interactive)" for cost when not available
+
 ## [0.1.16]
 
 ### Changed

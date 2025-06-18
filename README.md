@@ -1,6 +1,6 @@
 # Claude Swarm
 
-[![Gem Version](https://badge.fury.io/rb/claude_swarm.svg?cache_bust=0.1.15)](https://badge.fury.io/rb/claude_swarm)
+[![Gem Version](https://badge.fury.io/rb/claude_swarm.svg?cache_bust=0.1.17)](https://badge.fury.io/rb/claude_swarm)
 [![CI](https://github.com/parruda/claude-swarm/actions/workflows/ci.yml/badge.svg)](https://github.com/parruda/claude-swarm/actions/workflows/ci.yml)
 
 Claude Swarm orchestrates multiple Claude Code instances as a collaborative AI development team. It enables running AI agents with specialized roles, tools, and directory contexts, communicating via MCP (Model Context Protocol) in a tree-like hierarchy. Define your swarm topology in simple YAML and let Claude instances delegate tasks through connected instances. Perfect for complex projects requiring specialized AI agents for frontend, backend, testing, DevOps, or research tasks.
@@ -203,8 +203,8 @@ Each instance must have:
 
 Each instance can have:
 
-- **directory**: Working directory for this instance (can use ~ for home)
-- **model**: Claude model to use (opus, sonnet, haiku)
+- **directory**: Working directory for this instance (can use ~ for home). Can be a string for a single directory or an array of strings for multiple directories
+- **model**: Claude model to use (opus, sonnet)
 - **connections**: Array of other instances this one can communicate with
 - **allowed_tools**: Array of tools this instance can use (backward compatible with `tools`)
 - **disallowed_tools**: Array of tools to explicitly deny (takes precedence over allowed_tools)
@@ -336,7 +336,7 @@ swarm:
     database:
       description: "Database administrator managing data persistence"
       directory: ./db
-      model: haiku
+      model: sonnet
       allowed_tools:
         - Read
         - Bash
@@ -398,6 +398,36 @@ swarm:
         - Read
 ```
 
+#### Multi-Directory Support
+
+Instances can have access to multiple directories using an array (uses `claude --add-dir`):
+
+```yaml
+version: 1
+swarm:
+  name: "Multi-Module Project"
+  main: fullstack_dev
+  instances:
+    fullstack_dev:
+      description: "Full-stack developer working across multiple modules"
+      directory: [./frontend, ./backend, ./shared]  # Access to multiple directories
+      model: opus
+      allowed_tools: [Read, Edit, Write, Bash]
+      prompt: "You work across frontend, backend, and shared code modules"
+      
+    documentation_writer:
+      description: "Documentation specialist with access to code and docs"
+      directory: ["./docs", "./src", "./examples"]  # Multiple directories as array
+      model: sonnet
+      allowed_tools: [Read, Write, Edit]
+      prompt: "You maintain documentation based on code and examples"
+```
+
+When using multiple directories:
+- The first directory in the array is the primary working directory
+- Additional directories are accessible via the `--add-dir` flag in Claude
+- All directories must exist or the configuration will fail validation
+
 #### Mixed Permission Modes
 
 You can have different permission modes for different instances:
@@ -450,16 +480,6 @@ claude-swarm --prompt "Fix the bug in the payment module"
 claude-swarm --session-id 20241206_143022
 claude-swarm --session-id ~/path/to/session
 
-# List available sessions
-claude-swarm list-sessions
-claude-swarm list-sessions --limit 20
-
-# Tail session logs in real-time
-claude-swarm tail                        # Follow logs of the most recent session
-claude-swarm tail 20241206_143022        # Follow logs of a specific session
-claude-swarm tail --lines 50             # Show last 50 lines initially
-
-
 # Show version
 claude-swarm version
 
@@ -468,6 +488,70 @@ claude-swarm version
 
 # Internal command for MCP server (used by connected instances)
 claude-swarm mcp-serve INSTANCE_NAME --config CONFIG_FILE --session-timestamp TIMESTAMP
+```
+
+### Session Monitoring
+
+Claude Swarm provides commands to monitor and inspect running sessions:
+
+```bash
+# List running swarm sessions with costs and uptime
+claude-swarm ps
+
+# Show detailed information about a session including instance hierarchy
+claude-swarm show 20250617_235233
+
+# Watch live logs from a session
+claude-swarm watch 20250617_235233
+
+# Watch live logs from most recent session
+claude-swarm watch 
+
+# Watch logs starting from the last 50 lines
+claude-swarm watch 20250617_235233 -n 50
+
+# List all available sessions (including completed ones)
+claude-swarm list-sessions
+claude-swarm list-sessions --limit 20
+
+# Clean up stale session symlinks
+claude-swarm clean
+
+# Remove sessions older than 30 days
+claude-swarm clean --days 30
+```
+
+Example output from `claude-swarm ps`:
+```
+⚠️  Total cost does not include the cost of the main instance
+
+SESSION_ID       SWARM_NAME                 TOTAL_COST    UPTIME      DIRECTORY
+-------------------------------------------------------------------------------
+20250617_235233  Feature Development        $0.3847       15m         .
+20250617_143022  Bug Investigation          $1.2156       1h          ./shopify
+20250617_091547  Multi-Module Dev           $0.8932       30m         ./frontend, ./backend, ./shared
+```
+
+Note: The total cost shown reflects only the costs of connected instances called via MCP. The main instance cost is not tracked when running interactively.
+
+Example output from `claude-swarm show`:
+```
+Session: 20250617_235233
+Swarm: Feature Development
+Total Cost: $0.3847 (excluding main instance)
+Start Directory: /Users/paulo/project
+
+Instance Hierarchy:
+--------------------------------------------------
+├─ orchestrator [main] (orchestrator_e85036fc)
+   Cost: n/a (interactive) | Calls: 0
+   └─ test_archaeologist (test_archaeologist_c504ca5f)
+      Cost: $0.1925 | Calls: 1
+   └─ pr_analyst (pr_analyst_bfbefe56)
+      Cost: $0.1922 | Calls: 1
+
+Note: Main instance (orchestrator) cost is not tracked in interactive mode.
+      View costs directly in the Claude interface.
 ```
 
 ### Session Management and Restoration (Experimental)
@@ -509,10 +593,10 @@ Resume a previous session with all instances restored to their Claude session st
 
 ```bash
 # Resume by session ID
-claude-swarm --session-id 20241206_143022
+claude-swarm --session-id 20250617_143022
 
 # Resume by full path
-claude-swarm --session-id ~/.claude-swarm/sessions/my-project/20241206_143022
+claude-swarm --session-id ~/.claude-swarm/sessions/my-project/20250617_143022
 ```
 
 This will:
